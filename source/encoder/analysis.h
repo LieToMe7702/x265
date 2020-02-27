@@ -221,6 +221,9 @@ protected:
             md.bestMode = &mode;
     }
     int findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuGeom);
+	void calcuteGradient(const CUData & parentCTU);
+	void calcuteGradient(const pixel* src,uint32_t blockSize,const CUData & parentCTU, TextType type);
+
 };
 
 struct ThreadLocalData

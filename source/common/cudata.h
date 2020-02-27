@@ -230,6 +230,10 @@ public:
     uint32_t*       m_collectCUVariance;
     uint32_t*       m_collectCUCount;
 
+	/*gradient data*/
+	uint32_t*       m_gradientMagnitude;
+	float*       m_gradientDirection;
+
     CUData();
 
     void     initialize(const CUDataMemPool& dataPool, uint32_t depth, const x265_param& param, int instance);
@@ -358,8 +362,14 @@ struct CUDataMemPool
     uint32_t* dynRefCntBlock;
     uint32_t* dynRefVarBlock;
 
+	uint32_t* gradientMagnitudeBlock;
+	float* gradientDirectionBlock;
+
     CUDataMemPool() { charMemBlock = NULL; trCoeffMemBlock = NULL; mvMemBlock = NULL; distortionMemBlock = NULL; 
-                      dynRefineRdBlock = NULL; dynRefCntBlock = NULL; dynRefVarBlock = NULL;}
+                      dynRefineRdBlock = NULL; dynRefCntBlock = NULL; dynRefVarBlock = NULL;
+					  gradientDirectionBlock = NULL;
+					  gradientMagnitudeBlock = NULL;
+	}
 
     bool create(uint32_t depth, uint32_t csp, uint32_t numInstances, const x265_param& param)
     {
@@ -378,6 +388,10 @@ struct CUDataMemPool
         CHECKED_MALLOC(charMemBlock, uint8_t, numPartition * numInstances * CUData::BytesPerPartition);
         CHECKED_MALLOC_ZERO(mvMemBlock, MV, numPartition * 4 * numInstances);
         CHECKED_MALLOC(distortionMemBlock, sse_t, numPartition * numInstances);
+
+		CHECKED_MALLOC(gradientDirectionBlock, float, numPartition * numInstances);
+		CHECKED_MALLOC(gradientMagnitudeBlock, uint32_t, numPartition * numInstances);
+
         return true;
     fail:
         return false;
@@ -389,6 +403,8 @@ struct CUDataMemPool
         X265_FREE(mvMemBlock);
         X265_FREE(charMemBlock);
         X265_FREE(distortionMemBlock);
+		X265_FREE(gradientDirectionBlock);
+		X265_FREE(gradientMagnitudeBlock);
     }
 };
 }

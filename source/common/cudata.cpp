@@ -275,6 +275,9 @@ void CUData::initialize(const CUDataMemPool& dataPool, uint32_t depth, const x26
         m_trCoeff[2] = m_trCoeff[0] + sizeL + sizeC;
         for (int i = 0; i < 3; i++)
             m_fAc_den[i] = m_fDc_den[i] = 0;
+		m_gradientMagnitude = dataPool.gradientMagnitudeBlock + instance * m_numPartitions;
+		m_gradientDirection = dataPool.gradientDirectionBlock + instance * m_numPartitions;
+
     }
 }
 
@@ -320,6 +323,10 @@ void CUData::initCTU(const Frame& frame, uint32_t cuAddr, int qp, uint32_t first
     m_cuAboveLeft = (m_cuLeft && m_cuAbove) ? m_encData->getPicCTU(m_cuAddr - widthInCU - 1) : NULL;
     m_cuAboveRight = (m_cuAbove && ((m_cuAddr % widthInCU) < (widthInCU - 1))) ? m_encData->getPicCTU(m_cuAddr - widthInCU + 1) : NULL;
     memset(m_distortion, 0, m_numPartitions * sizeof(sse_t));
+	//m_gradientDirection = (float*)malloc(64 * sizeof(float));
+	//m_gradientMagnitude = (uint32_t*)malloc(64 * sizeof(uint32_t));
+	memset(m_gradientDirection, 0, m_numPartitions * sizeof(float));
+	memset(m_gradientMagnitude, 0, m_numPartitions * sizeof(uint32_t));
 }
 
 // initialize Sub partition

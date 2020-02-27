@@ -230,6 +230,7 @@ Mode& Analysis::compressCTU(CUData& ctu, Frame& frame, const CUGeom& cuGeom, con
             memcpy(ctu.m_partSize, &intraDataCTU->partSizes[ctu.m_cuAddr * numPartition], sizeof(char) * numPartition);
             memcpy(ctu.m_chromaIntraDir, &intraDataCTU->chromaModes[ctu.m_cuAddr * numPartition], sizeof(uint8_t) * numPartition);
         }
+		calcuteGradient(ctu);
         compressIntraCU(ctu, cuGeom, qp);
     }
     else
@@ -3755,3 +3756,62 @@ int Analysis::findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuG
     }
     return sameContentRef;
 }
+
+void Analysis::calcuteGradient(const CUData& ctu)
+{
+	return;
+	const pixel* srcY = m_modeDepth[0].fencYuv.m_buf[0];
+	uint32_t blockSize = m_modeDepth[0].fencYuv.m_size;
+
+	calcuteGradient(srcY, blockSize, ctu,TEXT_LUMA);
+
+	/*if (m_csp != X265_CSP_I400 && m_frame->m_fencPic->m_picCsp != X265_CSP_I400)
+	{
+		const pixel* srcU = m_modeDepth[0].fencYuv.m_buf[1];
+		const pixel* srcV = m_modeDepth[0].fencYuv.m_buf[2];
+		uint32_t blockSizeC = m_modeDepth[0].fencYuv.m_csize;
+
+		calcuteGradient(srcU, blockSizeC, ctu,TEXT_CHROMA_U);
+		calcuteGradient(srcV, blockSizeC, ctu,TEXT_CHROMA_V);
+	}*/
+
+}
+
+void Analysis::calcuteGradient(const pixel * src, uint32_t blockSize, const CUData & ctu, TextType type)
+{
+	int shift = (X265_DEPTH - 8);
+
+
+	// Calculate denominator of normalization factor
+	int32_t gx, gy;
+	for (uint32_t block_yy = 1; block_yy < blockSize - 1; block_yy += 1)
+	{
+		for (uint32_t block_xx = 1; block_xx < blockSize - 1; block_xx += 1)
+		{
+			uint32_t temp1 = src[(block_yy - 1) * blockSize + block_xx - 1] >> shift;
+			uint32_t temp2 = src[(block_yy - 1) * blockSize + block_xx] >> shift;
+			uint32_t temp3 = src[(block_yy - 1) * blockSize + block_xx + 1] >> shift;
+			uint32_t temp4 = src[(block_yy) * blockSize + block_xx - 1] >> shift;
+			uint32_t temp5 = src[(block_yy) * blockSize + block_xx] >> shift;
+			uint32_t temp6 = src[(block_yy) * blockSize + block_xx + 1] >> shift;
+			uint32_t temp7 = src[(block_yy + 1) * blockSize + block_xx - 1] >> shift;
+			uint32_t temp8 = src[(block_yy + 1) * blockSize + block_xx] >> shift;
+			uint32_t temp9 = src[(block_yy + 1) * blockSize + block_xx + 1] >> shift;
+
+			gx = temp3 + 2 * temp6 + temp9 - temp1 - 2 * temp4 - temp7;
+			gy = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
+
+			ctu.m_gradientDirection[block_yy * blockSize + block_xx] = (float)gy / gx;
+			if (gy < 0) {
+				gy = -gy;
+			}
+			if (gx < 0)
+			{
+				gx = -gx;
+			}
+			ctu.m_gradientMagnitude[block_yy * blockSize + block_xx] = gy + gx;
+		}
+	}
+	
+}
+
