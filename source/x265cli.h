@@ -321,6 +321,7 @@ static const struct option long_options[] =
     { "hevc-aq", no_argument, NULL, 0 },
     { "no-hevc-aq", no_argument, NULL, 0 },
     { "qp-adaptation-range", required_argument, NULL, 0 },
+    { "gradient-intra", no_argument, NULL, 0 },
 #ifdef SVT_HEVC
     { "svt",     no_argument, NULL, 0 },
     { "no-svt",  no_argument, NULL, 0 },

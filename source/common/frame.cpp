@@ -261,7 +261,5 @@ void Frame::destroy()
 		X265_FREE_ZERO(m_gradientDirection[0]);
 		X265_FREE_ZERO(m_gradientDirection[1]);
 		X265_FREE_ZERO(m_gradientDirection[2]);
-		delete[] m_gradientMagnitude;
-		delete[] m_gradientDirection;
 	}
 }
