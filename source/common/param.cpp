@@ -342,6 +342,8 @@ void x265_param_default(x265_param* param)
     param->bEnableSvtHevc = 0;
     param->svtHevcParam = NULL;
 
+	param->bGradientIntra = 0;
+
 #ifdef SVT_HEVC
     param->svtHevcParam = svtParam;
     svt_param_default(param);
@@ -1291,6 +1293,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("field") p->bField = atobool( value );
         OPT("cll") p->bEmitCLL = atobool(value);
         OPT("hme") p->bEnableHME = atobool(value);
+		OPT("gradient-intra") p->bGradientIntra = atobool(value);
         OPT("hme-search")
         {
             char search[3][5];
@@ -2446,6 +2449,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->bEnableSvtHevc = src->bEnableSvtHevc;
     dst->bEnableFades = src->bEnableFades;
     dst->bField = src->bField;
+	dst->bGradientIntra = src->bGradientIntra;
 
 #ifdef SVT_HEVC
     memcpy(dst->svtHevcParam, src->svtHevcParam, sizeof(EB_H265_ENC_CONFIGURATION));

@@ -1798,6 +1798,9 @@ typedef struct x265_param
 
     /*Emit content light level info SEI*/
     int         bEmitCLL;
+
+	int bGradientIntra;
+
 } x265_param;
 /* x265_param_alloc:
  *  Allocates an x265_param instance. The returned param structure is not

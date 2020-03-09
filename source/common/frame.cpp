@@ -97,6 +97,16 @@ bool Frame::create(x265_param *param, float* quantOffsets)
         CHECKED_MALLOC_ZERO(m_classifyCount, uint32_t, size);
     }
 
+	if(param->bGradientIntra)
+	{
+		const auto size = m_param->sourceWidth * m_param->sourceHeight;
+		for(auto i = 0; i < 3;i++)
+		{
+			CHECKED_MALLOC_ZERO(m_gradientMagnitude[i], pixel, size);
+			CHECKED_MALLOC_ZERO(m_gradientDirection[i], double, size);
+		}
+	}
+
     if (m_fencPic->create(param, !!m_param->bCopyPicToFrame) && m_lowres.create(param, m_fencPic, param->rc.qgSize))
     {
         X265_CHECK((m_reconColCount == NULL), "m_reconColCount was initialized");
@@ -242,4 +252,16 @@ void Frame::destroy()
         X265_FREE_ZERO(m_classifyVariance);
         X265_FREE_ZERO(m_classifyCount);
     }
+
+	if(m_param->bGradientIntra)
+	{
+		X265_FREE_ZERO(m_gradientMagnitude[0]);
+		X265_FREE_ZERO(m_gradientMagnitude[1]);
+		X265_FREE_ZERO(m_gradientMagnitude[2]);
+		X265_FREE_ZERO(m_gradientDirection[0]);
+		X265_FREE_ZERO(m_gradientDirection[1]);
+		X265_FREE_ZERO(m_gradientDirection[2]);
+		delete[] m_gradientMagnitude;
+		delete[] m_gradientDirection;
+	}
 }
