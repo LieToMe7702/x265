@@ -259,6 +259,54 @@ bool FrameEncoder::initializeGeoms()
     return true;
 }
 
+void FrameEncoder::calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, double * gradientDirection, pixel * gradientMagnitude)
+{
+	int shift = (X265_DEPTH - 8);
+
+	int32_t gx, gy;
+	for (uint32_t block_yy = 1; block_yy < height - 1; block_yy += 1)
+	{
+		for (uint32_t block_xx = 1; block_xx < width - 1; block_xx += 1)
+		{
+			uint32_t temp1 = src[(block_yy - 1) * width + block_xx - 1] >> shift;
+			uint32_t temp2 = src[(block_yy - 1) * width + block_xx] >> shift;
+			uint32_t temp3 = src[(block_yy - 1) * width + block_xx + 1] >> shift;
+			uint32_t temp4 = src[(block_yy)* width + block_xx - 1] >> shift;
+			uint32_t temp5 = src[(block_yy)* width + block_xx] >> shift;
+			uint32_t temp6 = src[(block_yy)* width + block_xx + 1] >> shift;
+			uint32_t temp7 = src[(block_yy + 1) * width + block_xx - 1] >> shift;
+			uint32_t temp8 = src[(block_yy + 1) * width + block_xx] >> shift;
+			uint32_t temp9 = src[(block_yy + 1) * width + block_xx + 1] >> shift;
+
+			gx = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
+			gy = temp1 + 2 * temp4 + temp7 - temp3 - 2 * temp6 - temp9;
+
+			gradientDirection[block_yy * width + block_xx] = static_cast<double>(gy) / gx;
+			if (gy < 0) {
+				gy = -gy;
+			}
+			if (gx < 0)
+			{
+				gx = -gx;
+			}
+			gradientMagnitude[block_yy * width + block_xx] = gy + gx;
+		}
+	}
+}
+
+void FrameEncoder::calcuteGradientIntra()
+{
+	auto yuv = m_frame->m_fencPic;
+	auto srcY = yuv->m_picOrg[0];
+	auto srcU = yuv->m_picOrg[1];
+	auto srcV = yuv->m_picOrg[2];
+	auto width = yuv->m_picWidth;
+	auto height = yuv->m_picHeight;
+	calcuteGradientIntra(srcY, width, height, m_frame->m_gradientDirection[0], m_frame->m_gradientMagnitude[0]);
+	calcuteGradientIntra(srcU, width >> 1, height >> 1, m_frame->m_gradientDirection[1], m_frame->m_gradientMagnitude[1]);
+	calcuteGradientIntra(srcV, width >> 1, height >> 1, m_frame->m_gradientDirection[2], m_frame->m_gradientMagnitude[2]);
+}
+
 bool FrameEncoder::startCompressFrame(Frame* curFrame)
 {
     m_slicetypeWaitTime = x265_mdate() - m_prevOutputTime;
@@ -791,6 +839,11 @@ void FrameEncoder::compressFrame()
 
     if (m_param->bDynamicRefine)
         computeAvgTrainingData();
+
+	if (m_param->bGradientIntra)
+	{
+		calcuteGradientIntra();
+	}
 
     /* Analyze CTU rows, most of the hard work is done here.  Frame is
      * compressed in a wave-front pattern if WPP is enabled. Row based loop

@@ -224,6 +224,9 @@ protected:
 
     bool initializeGeoms();
 
+    void calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, double * gradientDirection, pixel * gradientMagnitude);
+    void calcuteGradientIntra();
+
     /* analyze / compress frame, can be run in parallel within reference constraints */
     void compressFrame();
 
