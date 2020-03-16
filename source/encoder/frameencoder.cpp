@@ -259,8 +259,13 @@ bool FrameEncoder::initializeGeoms()
     return true;
 }
 
-void FrameEncoder::calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, double * gradientDirection, pixel * gradientMagnitude)
+void FrameEncoder::calculateGradientIntra(unsigned char * src, uint32_t width, uint32_t height, double * gradientDirection, pixel * gradientMagnitude)
 {
+	/*orig matrix*/
+	/*1,2,3*/
+	/*4,5,6*/
+	/*7,8,9*/
+
 	int shift = (X265_DEPTH - 8);
 
 	int32_t gx, gy;
@@ -272,7 +277,7 @@ void FrameEncoder::calcuteGradientIntra(unsigned char * src, uint32_t width, uin
 			uint32_t temp2 = src[(block_yy - 1) * width + block_xx] >> shift;
 			uint32_t temp3 = src[(block_yy - 1) * width + block_xx + 1] >> shift;
 			uint32_t temp4 = src[(block_yy)* width + block_xx - 1] >> shift;
-			uint32_t temp5 = src[(block_yy)* width + block_xx] >> shift;
+			//temp5 is not used to calculate gradient
 			uint32_t temp6 = src[(block_yy)* width + block_xx + 1] >> shift;
 			uint32_t temp7 = src[(block_yy + 1) * width + block_xx - 1] >> shift;
 			uint32_t temp8 = src[(block_yy + 1) * width + block_xx] >> shift;
@@ -294,7 +299,7 @@ void FrameEncoder::calcuteGradientIntra(unsigned char * src, uint32_t width, uin
 	}
 }
 
-void FrameEncoder::calcuteGradientIntra()
+void FrameEncoder::calculateGradientIntra()
 {
 	auto yuv = m_frame->m_fencPic;
 	auto srcY = yuv->m_picOrg[0];
@@ -302,9 +307,9 @@ void FrameEncoder::calcuteGradientIntra()
 	auto srcV = yuv->m_picOrg[2];
 	auto width = yuv->m_picWidth;
 	auto height = yuv->m_picHeight;
-	calcuteGradientIntra(srcY, width, height, m_frame->m_gradientDirection[0], m_frame->m_gradientMagnitude[0]);
-	calcuteGradientIntra(srcU, width >> 1, height >> 1, m_frame->m_gradientDirection[1], m_frame->m_gradientMagnitude[1]);
-	calcuteGradientIntra(srcV, width >> 1, height >> 1, m_frame->m_gradientDirection[2], m_frame->m_gradientMagnitude[2]);
+	calculateGradientIntra(srcY, width, height, m_frame->m_gradientDirection[0], m_frame->m_gradientMagnitude[0]);
+	calculateGradientIntra(srcU, width >> 1, height >> 1, m_frame->m_gradientDirection[1], m_frame->m_gradientMagnitude[1]);
+	calculateGradientIntra(srcV, width >> 1, height >> 1, m_frame->m_gradientDirection[2], m_frame->m_gradientMagnitude[2]);
 }
 
 bool FrameEncoder::startCompressFrame(Frame* curFrame)
@@ -842,7 +847,7 @@ void FrameEncoder::compressFrame()
 
 	if (m_param->bGradientIntra)
 	{
-		calcuteGradientIntra();
+		calculateGradientIntra();
 	}
 
     /* Analyze CTU rows, most of the hard work is done here.  Frame is
