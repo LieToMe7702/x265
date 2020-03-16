@@ -259,14 +259,22 @@ bool FrameEncoder::initializeGeoms()
     return true;
 }
 
-void FrameEncoder::calculateGradientIntra(unsigned char * src, uint32_t width, uint32_t height, double * gradientDirection, pixel * gradientMagnitude)
+void FrameEncoder::calculateGradientIntra(unsigned char * src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude)
 {
 	/*orig matrix*/
 	/*1,2,3*/
 	/*4,5,6*/
 	/*7,8,9*/
 
+
+	/*Horizontal and vertical gradients
+					   [ -1   0   1 ]        [-1   -2  -1 ]
+				  gX = [ -2   0   2 ]   gY = [ 0    0   0 ]
+					   [ -1   0   1 ]        [ 1    2   1 ]*/
+
 	int shift = (X265_DEPTH - 8);
+
+#define PI 3.14159265 
 
 	int32_t gx, gy;
 	for (uint32_t block_yy = 1; block_yy < height - 1; block_yy += 1)
@@ -286,7 +294,11 @@ void FrameEncoder::calculateGradientIntra(unsigned char * src, uint32_t width, u
 			gx = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
 			gy = temp1 + 2 * temp4 + temp7 - temp3 - 2 * temp6 - temp9;
 
-			gradientDirection[block_yy * width + block_xx] = static_cast<double>(gy) / gx;
+			auto radians = atan2(gy, gx);
+			auto theta = (float)((radians * 180) / PI);
+			if (theta < 0)
+				theta = 180 + theta;
+			gradientDirection[block_yy * width + block_xx] = theta;
 			if (gy < 0) {
 				gy = -gy;
 			}
@@ -295,6 +307,7 @@ void FrameEncoder::calculateGradientIntra(unsigned char * src, uint32_t width, u
 				gx = -gx;
 			}
 			gradientMagnitude[block_yy * width + block_xx] = gy + gx;
+			//printf("%f,%d\n", gradientDirection[block_yy * width + block_xx], gradientMagnitude[block_yy * width + block_xx]);
 		}
 	}
 }

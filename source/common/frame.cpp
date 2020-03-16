@@ -103,7 +103,7 @@ bool Frame::create(x265_param *param, float* quantOffsets)
 		for(auto i = 0; i < 3;i++)
 		{
 			CHECKED_MALLOC_ZERO(m_gradientMagnitude[i], pixel, size);
-			CHECKED_MALLOC_ZERO(m_gradientDirection[i], double, size);
+			CHECKED_MALLOC_ZERO(m_gradientDirection[i], float, size);
 		}
 	}
 

@@ -132,7 +132,7 @@ public:
     int                    m_fieldNum;
 
 	pixel*   m_gradientMagnitude[3];
-	double* m_gradientDirection[3];
+	float* m_gradientDirection[3];
 
     Frame();
 
