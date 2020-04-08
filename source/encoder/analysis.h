@@ -78,12 +78,21 @@ public:
         MAX_PRED_TYPES
     };
 
+	class GradientYuv
+	{
+		pixel*   m_gradientMagnitude[3];
+		float*	m_gradientDirection[3];
+		bool   create(uint32_t size, int csp);
+		void   destroy();
+	};
+
     struct ModeDepth
     {
         Mode           pred[MAX_PRED_TYPES];
         Mode*          bestMode;
         Yuv            fencYuv;
         CUDataMemPool  cuMemPool;
+		GradientYuv    gradientYuv;
     };
 
     class PMODE : public BondedTaskGroup
