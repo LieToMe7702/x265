@@ -80,6 +80,7 @@ public:
 
 	class GradientYuv
 	{
+	public:
 		pixel*   m_gradientMagnitude[3];
 		float*	m_gradientDirection[3];
 		bool   create(uint32_t size, int csp);

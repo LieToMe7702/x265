@@ -102,6 +102,7 @@ bool Analysis::create(ThreadLocalData *tld)
         ModeDepth &md = m_modeDepth[depth];
         ok &= md.cuMemPool.create(depth, csp, MAX_PRED_TYPES, *m_param);
         ok &= md.fencYuv.create(cuSize, csp);
+		ok &= md.gradientYuv.create(cuSize, csp);
         if (ok)
         {
             for (int j = 0; j < MAX_PRED_TYPES; j++)
@@ -125,6 +126,7 @@ void Analysis::destroy()
     {
         m_modeDepth[i].cuMemPool.destroy();
         m_modeDepth[i].fencYuv.destroy();
+		m_modeDepth[i].gradientYuv.destroy();
 
         for (int j = 0; j < MAX_PRED_TYPES; j++)
         {
@@ -3754,4 +3756,13 @@ int Analysis::findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuG
         }
     }
     return sameContentRef;
+}
+
+bool Analysis::GradientYuv::create(uint32_t size, int csp)
+{
+	return true;
+}
+
+void Analysis::GradientYuv::destroy()
+{
 }
