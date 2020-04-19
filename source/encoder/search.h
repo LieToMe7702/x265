@@ -97,6 +97,10 @@ struct MotionData
     }
 };
 
+float const GradientToAngleTable[35] = {
+0,0,225,219.9,213.27,207.98,202.11,195.71,188.88,183.58,180,176.42,171.12,164.29,157.89,152.02,146.73,140.91,135,
+129.09,123.27,117.98,112.11,105.71,98.88,93.58,90,86.42,81.12,74.29,67.89,62.02,56.73,50.91,45 };
+
 class GradientYuv
 {
 public:
@@ -106,6 +110,37 @@ public:
 	void   destroy();
 	void calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude);
 	void calacuteFromYuv(const Yuv& yuv);
+	void copyPartToYuv(GradientYuv& gradient_yuv, const uint32_t abs_part_idx);
+	uint32_t m_size;
+	uint32_t m_csize;
+	int      m_hChromaShift;
+	int      m_vChromaShift;
+
+	const float* getLumaAddrDirection(uint32_t absPartIdx) const { return m_gradientDirection[0] + getAddrOffset(absPartIdx, m_size); }
+	const float* getCbAddrDirection(uint32_t absPartIdx) const { return m_gradientDirection[1] + getChromaAddrOffset(absPartIdx); }
+	const float* getCrAddrDirection(uint32_t absPartIdx) const { return m_gradientDirection[2] + getChromaAddrOffset(absPartIdx); }
+	const float* getChromaAddrDirection(uint32_t chromaId, uint32_t absPartIdx) const { return m_gradientDirection[chromaId] + getChromaAddrOffset(absPartIdx); }
+
+	const pixel* getLumaAddr(uint32_t absPartIdx) const { return m_gradientMagnitude[0] + getAddrOffset(absPartIdx, m_size); }
+	const pixel* getCbAddr(uint32_t absPartIdx) const { return m_gradientMagnitude[1] + getChromaAddrOffset(absPartIdx); }
+	const pixel* getCrAddr(uint32_t absPartIdx) const { return m_gradientMagnitude[2] + getChromaAddrOffset(absPartIdx); }
+	const pixel* getChromaAddr(uint32_t chromaId, uint32_t absPartIdx) const { return m_gradientMagnitude[chromaId] + getChromaAddrOffset(absPartIdx); }
+
+	int getChromaAddrOffset(uint32_t absPartIdx) const
+	{
+		int blkX = g_zscanToPelX[absPartIdx] >> m_hChromaShift;
+		int blkY = g_zscanToPelY[absPartIdx] >> m_vChromaShift;
+
+		return blkX + blkY * m_csize;
+	}
+
+	static int getAddrOffset(uint32_t absPartIdx, uint32_t width)
+	{
+		int blkX = g_zscanToPelX[absPartIdx];
+		int blkY = g_zscanToPelY[absPartIdx];
+
+		return blkX + blkY * width;
+	}
 };
 
 struct Mode
@@ -377,6 +412,7 @@ protected:
 
     void     saveResidualQTData(CUData& cu, ShortYuv& resiYuv, uint32_t absPartIdx, uint32_t tuDepth);
 
+    uint32_t getBestIntraModeByGradient(const GradientYuv* gradient_yuv, unsigned mpmModes[3], uint64_t mpms, uint32_t, uint32_t*,int);
     // RDO search of luma intra modes; result is fully encoded luma. luma distortion is returned
     sse_t estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32_t depthRange[2]);
 

@@ -1569,6 +1569,8 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
 
 				if (m_param->bGradientIntra)
 				{
+					uint32_t gradientModes[MAX_RD_INTRA_MODES];
+					/*rbits =*/ getBestIntraModeByGradient(intraMode.gradientYuv, mpmModes, mpms, absPartIdx, gradientModes, maxCandCount - 3);
 					bcost = rbits;
 				}else
 				{
@@ -4045,4 +4047,43 @@ void Search::checkDQPForSplitPred(Mode& mode, const CUGeom& cuGeom)
             /* No residual within this CU or subCU, so reset QP to RefQP */
             cu.setQPSubParts(cu.getRefQP(0), 0, cuGeom.depth);
     }
+}
+
+uint32_t Search::getBestIntraModeByGradient(const GradientYuv* gradient_yuv, unsigned mpmModes[3], uint64_t mpms, uint32_t absPartIdx, uint32_t* gradientModes,int count)
+{
+	auto magnitude = gradient_yuv->getLumaAddr(absPartIdx);
+	auto direction = gradient_yuv->getLumaAddrDirection(absPartIdx);
+	auto size = gradient_yuv->m_size;
+	int modeCosts[35];
+	float modes[35];
+
+	for (uint32_t block_yy = 1; block_yy < size - 1; block_yy += 1)
+	{
+		for (uint32_t block_xx = 1; block_xx < size - 1; block_xx += 1)
+		{
+			auto cur_Magnitude = magnitude[block_yy * size + block_xx];
+			auto cur_Direction = direction[block_yy * size + block_xx];
+			for (int i = 2; i < 35; i++)
+			{
+				if(cur_Direction < GradientToAngleTable[i])
+				{
+					modeCosts[i] += cur_Magnitude;
+				}
+			}
+		}
+	}
+	for (int i = 2; i < 35; i++)
+	{
+		auto cost = modeCosts[i];
+		for(int j = 0; j < count;j++)
+		{
+			if(modes[j] == 0 || modes[j] > cost)
+			{
+				modes[j] = cost;
+				gradientModes[j] = i;
+			}
+			break;
+		}
+	}
+	return 0;
 }

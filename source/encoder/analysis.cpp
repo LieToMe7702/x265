@@ -602,6 +602,10 @@ uint64_t Analysis::compressIntraCU(const CUData& parentCTU, const CUGeom& cuGeom
             if (childGeom.flags & CUGeom::PRESENT)
             {
                 m_modeDepth[0].fencYuv.copyPartToYuv(nd.fencYuv, childGeom.absPartIdx);
+				if (m_param->bGradientIntra)
+				{
+					m_modeDepth[0].gradientYuv.copyPartToYuv(nd.gradientYuv, childGeom.absPartIdx);
+				}
                 m_rqt[nextDepth].cur.load(*nextContext);
 
                 if (m_slice->m_pps->bUseDQP && nextDepth <= m_slice->m_pps->maxCuDQPDepth)
@@ -3766,12 +3770,12 @@ int Analysis::findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuG
 bool GradientYuv::create(uint32_t size, int csp)
 {
 	auto m_csp = csp;
-	auto m_hChromaShift = CHROMA_H_SHIFT(csp);
-	auto m_vChromaShift = CHROMA_V_SHIFT(csp);
+	m_hChromaShift = CHROMA_H_SHIFT(csp);
+	m_vChromaShift = CHROMA_V_SHIFT(csp);
 
-	auto m_size = size;
+	m_size = size;
 	auto m_part = partitionFromSizes(size, size);
-	auto m_csize = 0;
+	m_csize = 0;
 
 	auto m_buf = m_gradientMagnitude;
 	auto m_buf_float = m_gradientDirection;
@@ -3815,7 +3819,21 @@ void GradientYuv::destroy()
 
 void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude)
 {
+
+	/*orig matrix*/
+	/*1,2,3*/
+	/*4,5,6*/
+	/*7,8,9*/
+
+
+	/*Horizontal and vertical gradients
+					   [ -1   0   1 ]        [-1   -2  -1 ]
+				  gX = [ -2   0   2 ]   gY = [ 0    0   0 ]
+					   [ -1   0   1 ]        [ 1    2   1 ]*/
+
 	int shift = (X265_DEPTH - 8);
+
+#define PI 3.14159265 
 
 	int32_t gx, gy;
 	for (uint32_t block_yy = 1; block_yy < height - 1; block_yy += 1)
@@ -3826,7 +3844,7 @@ void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint3
 			uint32_t temp2 = src[(block_yy - 1) * width + block_xx] >> shift;
 			uint32_t temp3 = src[(block_yy - 1) * width + block_xx + 1] >> shift;
 			uint32_t temp4 = src[(block_yy)* width + block_xx - 1] >> shift;
-			uint32_t temp5 = src[(block_yy)* width + block_xx] >> shift;
+			//temp5 is not used to calculate gradient
 			uint32_t temp6 = src[(block_yy)* width + block_xx + 1] >> shift;
 			uint32_t temp7 = src[(block_yy + 1) * width + block_xx - 1] >> shift;
 			uint32_t temp8 = src[(block_yy + 1) * width + block_xx] >> shift;
@@ -3835,7 +3853,11 @@ void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint3
 			gx = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
 			gy = temp1 + 2 * temp4 + temp7 - temp3 - 2 * temp6 - temp9;
 
-			gradientDirection[block_yy * width + block_xx] = static_cast<float>(gy) / gx;
+			auto radians = atan2(gy, gx);
+			auto theta = (float)((radians * 180) / PI);
+			if (theta < 0)
+				theta = 180 + theta;
+			gradientDirection[block_yy * width + block_xx] = theta;
 			if (gy < 0) {
 				gy = -gy;
 			}
@@ -3844,6 +3866,7 @@ void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint3
 				gx = -gx;
 			}
 			gradientMagnitude[block_yy * width + block_xx] = gy + gx;
+			//printf("%f,%d\n", gradientDirection[block_yy * width + block_xx], gradientMagnitude[block_yy * width + block_xx]);
 		}
 	}
 }
@@ -3858,4 +3881,19 @@ void X265_NS::GradientYuv::calacuteFromYuv(const Yuv & yuv)
 	calcuteGradientIntra(srcY, width, height, m_gradientDirection[0], m_gradientMagnitude[0]);
 	calcuteGradientIntra(srcU, width >> 1, height >> 1, m_gradientDirection[1], m_gradientMagnitude[1]);
 	calcuteGradientIntra(srcV, width >> 1, height >> 1, m_gradientDirection[2], m_gradientMagnitude[2]);
+}
+
+void GradientYuv::copyPartToYuv(GradientYuv& dstYuv, const uint32_t absPartIdx)
+{
+	auto size = dstYuv.m_size;
+	pixel* srcY = m_gradientMagnitude[0] + getAddrOffset(absPartIdx, m_size);
+	float* srcYDirection = m_gradientDirection[0] + getAddrOffset(absPartIdx, m_size);	
+	for (uint32_t block_yy = 1; block_yy < size - 1; block_yy += 1)
+	{
+		for (uint32_t block_xx = 1; block_xx < size - 1; block_xx += 1)
+		{
+			dstYuv.m_gradientMagnitude[0][block_yy * size + block_xx] = srcY[block_yy * m_size + block_xx];
+			dstYuv.m_gradientDirection[0][block_yy * size + block_xx] = srcYDirection[block_yy * m_size + block_xx];
+		}
+	}
 }
