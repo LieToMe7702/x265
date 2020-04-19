@@ -112,6 +112,8 @@ bool Analysis::create(ThreadLocalData *tld)
                 ok &= md.pred[j].predYuv.create(cuSize, csp);
                 ok &= md.pred[j].reconYuv.create(cuSize, csp);
                 md.pred[j].fencYuv = &md.fencYuv;
+				if (m_param->bGradientIntra)
+					md.pred[j].gradientYuv = &md.gradientYuv;
             }
         }
     }

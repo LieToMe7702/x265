@@ -1567,10 +1567,10 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
                 pixelcmp_t sa8d = primitives.cu[sizeIdx].sa8d;
                 uint64_t modeCosts[35];
 
-				/*if (m_param->bGradientIntra)
+				if (m_param->bGradientIntra)
 				{
-					
-				}else*/
+					bcost = rbits;
+				}else
 				{
 					// DC
 					primitives.cu[sizeIdx].intra_pred[DC_IDX](m_intraPred, scaleStride, intraNeighbourBuf[0], 0, (scaleTuSize <= 16));
