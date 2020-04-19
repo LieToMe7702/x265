@@ -97,14 +97,25 @@ struct MotionData
     }
 };
 
+class GradientYuv
+{
+public:
+	pixel*   m_gradientMagnitude[3];
+	float*	m_gradientDirection[3];
+	bool   create(uint32_t size, int csp);
+	void   destroy();
+	void calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude);
+	void calacuteFromYuv(const Yuv& yuv);
+};
+
 struct Mode
 {
     CUData     cu;
     const Yuv* fencYuv;
+	const GradientYuv* gradientYuv;
     Yuv        predYuv;
     Yuv        reconYuv;
     Entropy    contexts;
-
     enum { MAX_INTER_PARTS = 2 };
 
     MotionData bestME[MAX_INTER_PARTS][2];

@@ -78,17 +78,6 @@ public:
         MAX_PRED_TYPES
     };
 
-	class GradientYuv
-	{
-	public:
-		pixel*   m_gradientMagnitude[3];
-		float*	m_gradientDirection[3];
-		bool   create(uint32_t size, int csp);
-		void   destroy();
-		void calcuteGradientIntra(unsigned char * src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude);
-		void calacuteFromYuv(const Yuv& yuv);
-	};
-
     struct ModeDepth
     {
         Mode           pred[MAX_PRED_TYPES];

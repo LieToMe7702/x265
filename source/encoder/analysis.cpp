@@ -3761,7 +3761,7 @@ int Analysis::findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuG
     return sameContentRef;
 }
 
-bool Analysis::GradientYuv::create(uint32_t size, int csp)
+bool GradientYuv::create(uint32_t size, int csp)
 {
 	auto m_csp = csp;
 	auto m_hChromaShift = CHROMA_H_SHIFT(csp);
@@ -3805,13 +3805,13 @@ fail:
 	return false;
 }
 
-void Analysis::GradientYuv::destroy()
+void GradientYuv::destroy()
 {
 	X265_FREE(m_gradientMagnitude[0]);
 	X265_FREE(m_gradientDirection[0]);
 }
 
-void Analysis::GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude)
+void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude)
 {
 	int shift = (X265_DEPTH - 8);
 
@@ -3846,7 +3846,7 @@ void Analysis::GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t wi
 	}
 }
 
-void X265_NS::Analysis::GradientYuv::calacuteFromYuv(const Yuv & yuv)
+void X265_NS::GradientYuv::calacuteFromYuv(const Yuv & yuv)
 {
 	auto srcY = yuv.m_buf[0];
 	auto srcU = yuv.m_buf[1];

@@ -1538,7 +1538,6 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
             uint32_t rdModeList[MAX_RD_INTRA_MODES];
             uint64_t bcost;
             int maxCandCount = 2 + m_param->rdLevel + ((depth + initTuDepth) >> 1);
-
             {
                 ProfileCUScope(intraMode.cu, intraAnalysisElapsedTime, countIntraAnalysis);
 
@@ -1568,51 +1567,58 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
                 pixelcmp_t sa8d = primitives.cu[sizeIdx].sa8d;
                 uint64_t modeCosts[35];
 
-                // DC
-                primitives.cu[sizeIdx].intra_pred[DC_IDX](m_intraPred, scaleStride, intraNeighbourBuf[0], 0, (scaleTuSize <= 16));
-                uint32_t bits = (mpms & ((uint64_t)1 << DC_IDX)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, DC_IDX) : rbits;
-                uint32_t sad = sa8d(fenc, scaleStride, m_intraPred, scaleStride) << costShift;
-                modeCosts[DC_IDX] = bcost = m_rdCost.calcRdSADCost(sad, bits);
+				/*if (m_param->bGradientIntra)
+				{
+					
+				}else*/
+				{
+					// DC
+					primitives.cu[sizeIdx].intra_pred[DC_IDX](m_intraPred, scaleStride, intraNeighbourBuf[0], 0, (scaleTuSize <= 16));
+					uint32_t bits = (mpms & ((uint64_t)1 << DC_IDX)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, DC_IDX) : rbits;
+					uint32_t sad = sa8d(fenc, scaleStride, m_intraPred, scaleStride) << costShift;
+					modeCosts[DC_IDX] = bcost = m_rdCost.calcRdSADCost(sad, bits);
 
-                // PLANAR
-                pixel* planar = intraNeighbourBuf[0];
-                if (tuSize >= 8 && tuSize <= 32)
-                    planar = intraNeighbourBuf[1];
+					// PLANAR
+					pixel* planar = intraNeighbourBuf[0];
+					if (tuSize >= 8 && tuSize <= 32)
+						planar = intraNeighbourBuf[1];
 
-                primitives.cu[sizeIdx].intra_pred[PLANAR_IDX](m_intraPred, scaleStride, planar, 0, 0);
-                bits = (mpms & ((uint64_t)1 << PLANAR_IDX)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, PLANAR_IDX) : rbits;
-                sad = sa8d(fenc, scaleStride, m_intraPred, scaleStride) << costShift;
-                modeCosts[PLANAR_IDX] = m_rdCost.calcRdSADCost(sad, bits);
-                COPY1_IF_LT(bcost, modeCosts[PLANAR_IDX]);
+					primitives.cu[sizeIdx].intra_pred[PLANAR_IDX](m_intraPred, scaleStride, planar, 0, 0);
+					bits = (mpms & ((uint64_t)1 << PLANAR_IDX)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, PLANAR_IDX) : rbits;
+					sad = sa8d(fenc, scaleStride, m_intraPred, scaleStride) << costShift;
+					modeCosts[PLANAR_IDX] = m_rdCost.calcRdSADCost(sad, bits);
+					COPY1_IF_LT(bcost, modeCosts[PLANAR_IDX]);
 
-                // angular predictions
-                if (primitives.cu[sizeIdx].intra_pred_allangs)
-                {
-                    primitives.cu[sizeIdx].transpose(m_fencTransposed, fenc, scaleStride);
-                    primitives.cu[sizeIdx].intra_pred_allangs(m_intraPredAngs, intraNeighbourBuf[0], intraNeighbourBuf[1], (scaleTuSize <= 16));
-                    for (int mode = 2; mode < 35; mode++)
-                    {
-                        bits = (mpms & ((uint64_t)1 << mode)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, mode) : rbits;
-                        if (mode < 18)
-                            sad = sa8d(m_fencTransposed, scaleTuSize, &m_intraPredAngs[(mode - 2) * (scaleTuSize * scaleTuSize)], scaleTuSize) << costShift;
-                        else
-                            sad = sa8d(fenc, scaleStride, &m_intraPredAngs[(mode - 2) * (scaleTuSize * scaleTuSize)], scaleTuSize) << costShift;
-                        modeCosts[mode] = m_rdCost.calcRdSADCost(sad, bits);
-                        COPY1_IF_LT(bcost, modeCosts[mode]);
-                    }
-                }
-                else
-                {
-                    for (int mode = 2; mode < 35; mode++)
-                    {
-                        bits = (mpms & ((uint64_t)1 << mode)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, mode) : rbits;
-                        int filter = !!(g_intraFilterFlags[mode] & scaleTuSize);
-                        primitives.cu[sizeIdx].intra_pred[mode](m_intraPred, scaleTuSize, intraNeighbourBuf[filter], mode, scaleTuSize <= 16);
-                        sad = sa8d(fenc, scaleStride, m_intraPred, scaleTuSize) << costShift;
-                        modeCosts[mode] = m_rdCost.calcRdSADCost(sad, bits);
-                        COPY1_IF_LT(bcost, modeCosts[mode]);
-                    }
-                }
+					// angular predictions
+					if (primitives.cu[sizeIdx].intra_pred_allangs)
+					{
+						primitives.cu[sizeIdx].transpose(m_fencTransposed, fenc, scaleStride);
+						primitives.cu[sizeIdx].intra_pred_allangs(m_intraPredAngs, intraNeighbourBuf[0], intraNeighbourBuf[1], (scaleTuSize <= 16));
+						for (int mode = 2; mode < 35; mode++)
+						{
+							bits = (mpms & ((uint64_t)1 << mode)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, mode) : rbits;
+							if (mode < 18)
+								sad = sa8d(m_fencTransposed, scaleTuSize, &m_intraPredAngs[(mode - 2) * (scaleTuSize * scaleTuSize)], scaleTuSize) << costShift;
+							else
+								sad = sa8d(fenc, scaleStride, &m_intraPredAngs[(mode - 2) * (scaleTuSize * scaleTuSize)], scaleTuSize) << costShift;
+							modeCosts[mode] = m_rdCost.calcRdSADCost(sad, bits);
+							COPY1_IF_LT(bcost, modeCosts[mode]);
+						}
+					}
+					else
+					{
+						for (int mode = 2; mode < 35; mode++)
+						{
+							bits = (mpms & ((uint64_t)1 << mode)) ? m_entropyCoder.bitsIntraModeMPM(mpmModes, mode) : rbits;
+							int filter = !!(g_intraFilterFlags[mode] & scaleTuSize);
+							primitives.cu[sizeIdx].intra_pred[mode](m_intraPred, scaleTuSize, intraNeighbourBuf[filter], mode, scaleTuSize <= 16);
+							sad = sa8d(fenc, scaleStride, m_intraPred, scaleTuSize) << costShift;
+							modeCosts[mode] = m_rdCost.calcRdSADCost(sad, bits);
+							COPY1_IF_LT(bcost, modeCosts[mode]);
+						}
+					}
+				}
+                
 
                 /* Find the top maxCandCount candidate modes with cost within 25% of best
                 * or among the most probable modes. maxCandCount is derived from the
