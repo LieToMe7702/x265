@@ -154,7 +154,7 @@ Mode& Analysis::compressCTU(CUData& ctu, Frame& frame, const CUGeom& cuGeom, con
     m_rqt[0].cur.load(initialContext);
     ctu.m_meanQP = initialContext.m_meanQP;
     m_modeDepth[0].fencYuv.copyFromPicYuv(*m_frame->m_fencPic, ctu.m_cuAddr, 0);
-
+	m_modeDepth[0].gradientYuv.calacuteFromYuv(m_modeDepth[0].fencYuv);
     if (m_param->bSsimRd)
         calculateNormFactor(ctu, qp);
 
@@ -3760,9 +3760,97 @@ int Analysis::findSameContentRefCount(const CUData& parentCTU, const CUGeom& cuG
 
 bool Analysis::GradientYuv::create(uint32_t size, int csp)
 {
-	return true;
+	auto m_csp = csp;
+	auto m_hChromaShift = CHROMA_H_SHIFT(csp);
+	auto m_vChromaShift = CHROMA_V_SHIFT(csp);
+
+	auto m_size = size;
+	auto m_part = partitionFromSizes(size, size);
+	auto m_csize = 0;
+
+	auto m_buf = m_gradientMagnitude;
+	auto m_buf_float = m_gradientDirection;
+	if (csp == X265_CSP_I400)
+	{
+		CHECKED_MALLOC(m_buf[0], pixel, size * size + 8);
+		CHECKED_MALLOC(m_buf_float[0], float, size * size + 8);
+		m_buf[1] = m_buf[2] = 0;
+		m_buf_float[1] = m_buf_float[2] = 0;
+		m_csize = 0;
+		return true;
+	}
+	else
+	{
+		m_csize = size >> m_hChromaShift;
+
+		size_t sizeL = size * size;
+		size_t sizeC = sizeL >> (m_vChromaShift + m_hChromaShift);
+
+		X265_CHECK((sizeC & 15) == 0, "invalid size");
+
+		// memory allocation (padded for SIMD reads)
+		CHECKED_MALLOC(m_buf[0], pixel, sizeL + sizeC * 2 + 8);
+		CHECKED_MALLOC(m_buf_float[0], float, sizeL + sizeC * 2 + 8);
+		m_buf[1] = m_buf[0] + sizeL;
+		m_buf[2] = m_buf[0] + sizeL + sizeC;
+		m_buf_float[1] = m_buf_float[0] + sizeL;
+		m_buf_float[2] = m_buf_float[0] + sizeL + sizeC;
+		return true;
+	}
+
+fail:
+	return false;
 }
 
 void Analysis::GradientYuv::destroy()
 {
+	X265_FREE(m_gradientMagnitude[0]);
+	X265_FREE(m_gradientDirection[0]);
+}
+
+void Analysis::GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint32_t height, float * gradientDirection, pixel * gradientMagnitude)
+{
+	int shift = (X265_DEPTH - 8);
+
+	int32_t gx, gy;
+	for (uint32_t block_yy = 1; block_yy < height - 1; block_yy += 1)
+	{
+		for (uint32_t block_xx = 1; block_xx < width - 1; block_xx += 1)
+		{
+			uint32_t temp1 = src[(block_yy - 1) * width + block_xx - 1] >> shift;
+			uint32_t temp2 = src[(block_yy - 1) * width + block_xx] >> shift;
+			uint32_t temp3 = src[(block_yy - 1) * width + block_xx + 1] >> shift;
+			uint32_t temp4 = src[(block_yy)* width + block_xx - 1] >> shift;
+			uint32_t temp5 = src[(block_yy)* width + block_xx] >> shift;
+			uint32_t temp6 = src[(block_yy)* width + block_xx + 1] >> shift;
+			uint32_t temp7 = src[(block_yy + 1) * width + block_xx - 1] >> shift;
+			uint32_t temp8 = src[(block_yy + 1) * width + block_xx] >> shift;
+			uint32_t temp9 = src[(block_yy + 1) * width + block_xx + 1] >> shift;
+
+			gx = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
+			gy = temp1 + 2 * temp4 + temp7 - temp3 - 2 * temp6 - temp9;
+
+			gradientDirection[block_yy * width + block_xx] = static_cast<float>(gy) / gx;
+			if (gy < 0) {
+				gy = -gy;
+			}
+			if (gx < 0)
+			{
+				gx = -gx;
+			}
+			gradientMagnitude[block_yy * width + block_xx] = gy + gx;
+		}
+	}
+}
+
+void X265_NS::Analysis::GradientYuv::calacuteFromYuv(const Yuv & yuv)
+{
+	auto srcY = yuv.m_buf[0];
+	auto srcU = yuv.m_buf[1];
+	auto srcV = yuv.m_buf[2];
+	auto width = yuv.m_size;
+	auto height = yuv.m_size;
+	calcuteGradientIntra(srcY, width, height, m_gradientDirection[0], m_gradientMagnitude[0]);
+	calcuteGradientIntra(srcU, width >> 1, height >> 1, m_gradientDirection[1], m_gradientMagnitude[1]);
+	calcuteGradientIntra(srcV, width >> 1, height >> 1, m_gradientDirection[2], m_gradientMagnitude[2]);
 }
