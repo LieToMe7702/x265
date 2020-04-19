@@ -102,6 +102,7 @@ bool Analysis::create(ThreadLocalData *tld)
         ModeDepth &md = m_modeDepth[depth];
         ok &= md.cuMemPool.create(depth, csp, MAX_PRED_TYPES, *m_param);
         ok &= md.fencYuv.create(cuSize, csp);
+		if (m_param->bGradientIntra)
 		ok &= md.gradientYuv.create(cuSize, csp);
         if (ok)
         {
@@ -126,6 +127,7 @@ void Analysis::destroy()
     {
         m_modeDepth[i].cuMemPool.destroy();
         m_modeDepth[i].fencYuv.destroy();
+		if (m_param->bGradientIntra)
 		m_modeDepth[i].gradientYuv.destroy();
 
         for (int j = 0; j < MAX_PRED_TYPES; j++)
@@ -154,6 +156,7 @@ Mode& Analysis::compressCTU(CUData& ctu, Frame& frame, const CUGeom& cuGeom, con
     m_rqt[0].cur.load(initialContext);
     ctu.m_meanQP = initialContext.m_meanQP;
     m_modeDepth[0].fencYuv.copyFromPicYuv(*m_frame->m_fencPic, ctu.m_cuAddr, 0);
+	if (m_param->bGradientIntra)
 	m_modeDepth[0].gradientYuv.calacuteFromYuv(m_modeDepth[0].fencYuv);
     if (m_param->bSsimRd)
         calculateNormFactor(ctu, qp);
