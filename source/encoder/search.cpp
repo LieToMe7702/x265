@@ -1663,7 +1663,11 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
 					auto target = gradientModes[j];
 					for (int i = 0; i < maxCandCount; i++)
 					{
-						if (rdModeList[i] == target || candCostList[i] == MAX_INT64)
+						if(candCostList[i] == MAX_INT64)
+						{
+							break;
+						}
+						if (rdModeList[i] == target)
 						{
 							find = true;
 							break;
@@ -4104,7 +4108,7 @@ uint32_t Search::getBestIntraModeByGradient(const GradientYuv* gradient_yuv, uns
 	auto magnitude = gradient_yuv->getLumaAddr(absPartIdx);
 	auto direction = gradient_yuv->getLumaAddrDirection(absPartIdx);
 	auto size = gradient_yuv->m_size;
-	int modeCosts[35] = {0};
+	uint64_t modeCosts[35] = {0};
 	float modes[35] = {0};
 	for (uint32_t block_yy = 1; block_yy < size - 1; block_yy += 1)
 	{
@@ -4117,6 +4121,7 @@ uint32_t Search::getBestIntraModeByGradient(const GradientYuv* gradient_yuv, uns
 				if(cur_Direction < GradientToAngleTable[i])
 				{
 					modeCosts[i] += cur_Magnitude;
+					break;
 				}
 			}
 		}
