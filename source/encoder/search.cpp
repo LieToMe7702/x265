@@ -1540,7 +1540,7 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
             uint64_t bcost;
             int maxCandCount = 2 + m_param->rdLevel + ((depth + initTuDepth) >> 1);
 			int gradientCandCount = maxCandCount - 3;
-			//int gradientCandCount = maxCandCount;
+			//int gradientCandCount = 16;
             {
                 ProfileCUScope(intraMode.cu, intraAnalysisElapsedTime, countIntraAnalysis);
 
@@ -1572,8 +1572,7 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
 
 				if (m_param->bGradientIntra)
 				{
-					/*rbits =*/ getBestIntraModeByGradient(intraMode.gradientYuv, mpmModes, mpms, absPartIdx, gradientModes, gradientCandCount);
-					bcost = rbits;
+					getBestIntraModeByGradient(intraMode.gradientYuv, mpmModes, mpms, absPartIdx, gradientModes, gradientCandCount);
 				}
 
                 // DC
@@ -1638,7 +1637,24 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
 			                COPY1_IF_LT(bcost, modeCosts[mode]);
 		                }
 	                }
-                }      
+                }
+				else
+				{
+					for(int i = 0; i < gradientCandCount;i++)
+					{
+						int mode = gradientModes[i];
+						if (mode == 0) { continue; }
+						bits = (mpms & ((uint64_t)1 << mode))
+							? m_entropyCoder.bitsIntraModeMPM(mpmModes, mode)
+							: rbits;
+						int filter = !!(g_intraFilterFlags[mode] & scaleTuSize);
+						primitives.cu[sizeIdx].intra_pred[mode](m_intraPred, scaleTuSize, intraNeighbourBuf[filter],
+							mode, scaleTuSize <= 16);
+						sad = sa8d(fenc, scaleStride, m_intraPred, scaleTuSize) << costShift;
+						modeCosts[mode] = m_rdCost.calcRdSADCost(sad, bits);
+						COPY1_IF_LT(bcost, modeCosts[mode]);
+					}					
+				}
 
                 /* Find the top maxCandCount candidate modes with cost within 25% of best
                 * or among the most probable modes. maxCandCount is derived from the
@@ -1653,42 +1669,7 @@ sse_t Search::estIntraPredQT(Mode &intraMode, const CUGeom& cuGeom, const uint32
                         /* choose for R-D analysis only if this mode passes cost threshold or matches MPM[0] */
                         updateCandList(mode, modeCosts[mode], maxCandCount, rdModeList, candCostList);
             }
-			auto len = maxCandCount;
 
-			if (m_param->bGradientIntra)
-			{
-				for(int j = 0; j < gradientCandCount;j++)
-				{
-					auto find = false;
-					auto target = gradientModes[j];
-					for (int i = 0; i < maxCandCount; i++)
-					{
-						if(candCostList[i] == MAX_INT64)
-						{
-							break;
-						}
-						if (rdModeList[i] == target)
-						{
-							find = true;
-							break;
-						}
-					}
-					if(!find)
-					{
-						ProfileCUScope(intraMode.cu, intraRDOElapsedTime[cuGeom.depth], countIntraRDO[cuGeom.depth]);
-
-						m_entropyCoder.load(m_rqt[depth].cur);
-						cu.setLumaIntraDirSubParts(target, absPartIdx, depth + initTuDepth);
-
-						Cost icosts;
-						if (checkTransformSkip)
-							codeIntraLumaTSkip(intraMode, cuGeom, initTuDepth, absPartIdx, icosts);
-						else
-							codeIntraLumaQT(intraMode, cuGeom, initTuDepth, absPartIdx, false, icosts, depthRange);
-						COPY2_IF_LT(bcost, icosts.rdcost, bmode, target);
-					}
-				}
-			}
 			/* measure best candidates using simple RDO (no TU splits) */
 			bcost = MAX_INT64;
 			for (int i = 0; i < maxCandCount; i++)
@@ -4116,8 +4097,14 @@ uint32_t Search::getBestIntraModeByGradient(const GradientYuv* gradient_yuv, uns
 		{
 			auto cur_Magnitude = magnitude[block_yy * size + block_xx];
 			auto cur_Direction = direction[block_yy * size + block_xx];
+			cur_Direction += 90;
+			if(cur_Direction > 225)
+			{
+				cur_Direction -= 180;
+			}
 			for (int i = 34; i >= 2; i--)
 			{
+				
 				if(cur_Direction < GradientToAngleTable[i])
 				{
 					modeCosts[i] += cur_Magnitude;
@@ -4131,7 +4118,7 @@ uint32_t Search::getBestIntraModeByGradient(const GradientYuv* gradient_yuv, uns
 		auto cost = modeCosts[i];
 		for(int j = 0; j < count;j++)
 		{
-			if(modes[j] == 0 || modes[j] > cost)
+			if( modes[j] < cost)
 			{
 				modes[j] = cost;
 				gradientModes[j] = i;

@@ -3851,7 +3851,7 @@ void GradientYuv::calcuteGradientIntra(unsigned char* src, uint32_t width, uint3
 			uint32_t temp9 = src[(block_yy + 1) * width + block_xx + 1] >> shift;
 
 			gx = temp7 + 2 * temp8 + temp9 - temp1 - 2 * temp2 - temp3;
-			gy = temp1 + 2 * temp4 + temp7 - temp3 - 2 * temp6 - temp9;
+			gy = -temp1 - 2 * temp4 - temp7 + temp3 + 2 * temp6 + temp9;
 
 			auto radians = atan2(gy, gx);
 			auto theta = (float)((radians * 180) / PI);
